@@ -143,6 +143,16 @@
            03 MON-HP           PIC 99.
            03 CURRENT-ATTACK   PIC 99.
            03 RANDOM-NUM       PIC 99.
+           03 RANDOM-SEED PIC 9(10) VALUE ZEROS.
+           03 RANDOM-NUM-SEED.
+               04 SEED-DATE.
+                  05  CURRENTYEAR     PIC 9(4).
+                  05  CURRENTMONTH    PIC 99.
+                  05  CURRENTDAY      PIC 99.
+               04 SEED-TIME.
+                  05  CURRENTHOUR     PIC 99.
+                  05  CURRENTMINUTE   PIC 99.
+                  05  CURRENTSSSS     PIC 9(4).
        PROCEDURE DIVISION.
       ******************************************************************
       *    MAIN PROGRAM LOGIC
@@ -162,6 +172,10 @@
            CLOSE INPUT-MONSTERS.
            PERFORM 2500-PLACE-ITEMS
            PERFORM 3500-PLACE-MONSTERS
+      *     ACCEPT  SEED-TIME FROM TIME.
+      *     MOVE SEED-TIME TO RANDOM-SEED.
+      *     DISPLAY "RANDOM-SEED ", RANDOM-SEED
+      *     COMPUTE RANDOM-NUM = FUNCTION RANDOM (RANDOM-SEED).
            DISPLAY "YOU FORGOT YOUR KEYS IN THE OFFICE. YOU MUST"
                DISPLAY "RETRIEVE THEM BEFORE YOUR BOSS FINDS YOU OR"
                DISPLAY "YOU RUN OUT OF YOUR WILL TO LIVE. ELSE"
@@ -245,8 +259,13 @@
       *    PLACES MONSTERS INTO ROOM
       ******************************************************************
        3500-PLACE-MONSTERS.
+           ACCEPT  SEED-TIME FROM TIME.
+           MOVE SEED-TIME TO RANDOM-SEED.
+           DISPLAY "RANDOM-SEED ", RANDOM-SEED
+           COMPUTE RANDOM-NUM = FUNCTION RANDOM (RANDOM-SEED).
            PERFORM UNTIL PLACE-MON = 8
                COMPUTE RANDOM-NUM = FUNCTION RANDOM * 2 + 1
+               DISPLAY "RANDOM-NUM ", RANDOM-NUM
                IF (RANDOM-NUM = 2) THEN
                    MOVE T-MONLOC(PLACE-MON) TO MON-NUM
                    MOVE T-MONNUM(PLACE-MON) TO T-ROOMMON(MON-NUM)
