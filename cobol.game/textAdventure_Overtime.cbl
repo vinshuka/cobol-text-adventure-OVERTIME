@@ -61,12 +61,12 @@
       ******************************************************************
        01 MONSTERS-DATA.
            03 I-MONNUM         PIC 99.
-           03 I-MONDESC        PIC X(11).
+           03 I-MONDESC        PIC X(12).
            03 I-MONTEXT        PIC X(33).
            03 I-MONLOC         PIC 99.
            03 I-MONATTACK      PIC 99.
            03 I-MONHP          PIC 99.
-           03 FILLER           PIC X(28)   VALUE SPACES.
+           03 FILLER           PIC X(27)   VALUE SPACES.
       ******************************************************************
       *    SETUP ROOMS TABLE
       ******************************************************************
@@ -142,8 +142,12 @@
            03 CURRENT-MON      PIC 99.
            03 MON-HP           PIC 99.
            03 CURRENT-ATTACK   PIC 99.
+           03 DISPLAY-OUTPUT   PIC X(40)   VALUE SPACES.
+      ******************************************************************
+      *    RANDOMIZER VARIABLES
+      ******************************************************************
            03 RANDOM-NUM       PIC 99.
-           03 RANDOM-SEED PIC 9(10) VALUE ZEROS.
+           03 RANDOM-SEED      PIC 9(10)   VALUE ZEROS.
            03 RANDOM-NUM-SEED.
                04 SEED-DATE.
                   05  CURRENTYEAR     PIC 9(4).
@@ -172,10 +176,6 @@
            CLOSE INPUT-MONSTERS.
            PERFORM 2500-PLACE-ITEMS
            PERFORM 3500-PLACE-MONSTERS
-      *     ACCEPT  SEED-TIME FROM TIME.
-      *     MOVE SEED-TIME TO RANDOM-SEED.
-      *     DISPLAY "RANDOM-SEED ", RANDOM-SEED
-      *     COMPUTE RANDOM-NUM = FUNCTION RANDOM (RANDOM-SEED).
            DISPLAY "YOU FORGOT YOUR KEYS IN THE OFFICE. YOU MUST"
                DISPLAY "RETRIEVE THEM BEFORE YOUR BOSS FINDS YOU OR"
                DISPLAY "YOU RUN OUT OF YOUR WILL TO LIVE. ELSE"
@@ -261,11 +261,9 @@
        3500-PLACE-MONSTERS.
            ACCEPT  SEED-TIME FROM TIME.
            MOVE SEED-TIME TO RANDOM-SEED.
-           DISPLAY "RANDOM-SEED ", RANDOM-SEED
            COMPUTE RANDOM-NUM = FUNCTION RANDOM (RANDOM-SEED).
            PERFORM UNTIL PLACE-MON = 8
                COMPUTE RANDOM-NUM = FUNCTION RANDOM * 2 + 1
-               DISPLAY "RANDOM-NUM ", RANDOM-NUM
                IF (RANDOM-NUM = 2) THEN
                    MOVE T-MONLOC(PLACE-MON) TO MON-NUM
                    MOVE T-MONNUM(PLACE-MON) TO T-ROOMMON(MON-NUM)
@@ -279,37 +277,24 @@
            MOVE 01 TO B-COUNT
            MOVE 0  TO DROPPED
            MOVE 0  TO USED
-           IF (COMMAND = "GO") THEN
-               PERFORM 4100-PROCESS-GO
-           ELSE
-               IF (COMMAND = "PICKUP") THEN
+           EVALUATE COMMAND
+               WHEN "GO"
+                   PERFORM 4100-PROCESS-GO
+               WHEN "PICKUP"
                    PERFORM 4200-PROCESS-PICKUP
-               ELSE
-                   IF (COMMAND = "DROP") THEN
-                       PERFORM 4300-PROCESS-DROP
-                   ELSE
-                       IF (COMMAND = "USE") THEN
-                           PERFORM 4400-PROCESS-USE
-                       ELSE
-                           IF (COMMAND = "LOOK") THEN
-                               PERFORM 4500-PROCESS-LOOK
-                           ELSE
-                               IF (COMMAND = "BRIEFCASE") THEN
-                                   PERFORM 4600-PROCESS-BRIEFCASE
-                               ELSE
-                                   IF (COMMAND = "ATTACK") THEN
-                                       PERFORM 4700-PROCESS-ATTACK
-                                   ELSE
-                                       IF (COMMAND = "HELP") THEN
-                                           PERFORM 4800-PROCESS-HELP
-                                       END-IF
-                                   END-IF
-                               END-IF
-                           END-IF
-                       END-IF
-                   END-IF
-               END-IF
-           END-IF.
+               WHEN "DROP"
+                   PERFORM 4300-PROCESS-DROP
+               WHEN "USE"
+                   PERFORM 4400-PROCESS-USE
+               WHEN "LOOK"
+                   PERFORM 4500-PROCESS-LOOK
+               WHEN "BRIEFCASE"
+                   PERFORM 4600-PROCESS-BRIEFCASE
+               WHEN "ATTACK"
+                   PERFORM 4700-PROCESS-ATTACK
+               WHEN "HELP"
+                   PERFORM 4800-PROCESS-HELP
+           END-EVALUATE.
       ******************************************************************
       *    4100-PROCESS-GO
       ******************************************************************
@@ -379,7 +364,7 @@
       *    4300-PROCESS-DROP
       ******************************************************************
        4300-PROCESS-DROP.
-           PERFORM UNTIL B-COUNT >= 11 OR DROPPED = 10
+           PERFORM UNTIL B-COUNT >= 11 OR DROPPED = 1
                MOVE B-ITEMNUM(B-COUNT) TO B-ITEM
                IF (COMMAND-PARM = T-ITEMDESC(B-ITEM)) THEN
                    PERFORM 4350-DROP-ITEM
@@ -514,7 +499,10 @@
            SUBTRACT PLAYER-ATTACK FROM MON-HP
            IF (MON-HP <= 0) THEN
                MOVE 00 TO T-ROOMMON(CURRENT-ROOM)
-               DISPLAY T-MONDESC(CURRENT-MON), "RUNS AWAY CRYING"
+               MOVE SPACES TO DISPLAY-OUTPUT
+               STRING T-MONDESC(CURRENT-MON) DELIMITED BY ";"
+               " RUNS AWAY CRYING" DELIMITED BY SIZE INTO DISPLAY-OUTPUT
+               DISPLAY DISPLAY-OUTPUT
            ELSE
                MOVE MON-HP TO T-MONHP(CURRENT-MON)
            END-IF.
@@ -539,7 +527,10 @@
            MOVE T-ROOMMON(CURRENT-ROOM) TO CURRENT-MON
            MOVE T-MONATTACK(CURRENT-MON) TO CURRENT-ATTACK
            COMPUTE WILL-TO-LIVE = WILL-TO-LIVE - CURRENT-ATTACK
-           DISPLAY T-MONDESC(CURRENT-MON), "ATTACKS"
+           MOVE SPACES TO DISPLAY-OUTPUT
+           STRING T-MONDESC(CURRENT-MON) DELIMITED BY ";" " ATTACKS"
+           DELIMITED BY SIZE INTO DISPLAY-OUTPUT
+           DISPLAY DISPLAY-OUTPUT
            DISPLAY T-MONTEXT(CURRENT-MON).
       ******************************************************************
       ******************************************************************
