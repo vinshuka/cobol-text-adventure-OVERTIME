@@ -9,9 +9,8 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-      *    TODO: CHANGE FILE TO THE NEW ROOMS FILE
            SELECT INPUT-ROOMS
-           ASSIGN TO 'C:\Text-Adventure\cobol.data\rooms.dat'
+           ASSIGN TO 'C:\Text-Adventure\cobol.data\rooms-test.dat'
            ORGANISATION IS LINE SEQUENTIAL.
            SELECT INPUT-ITEMS
            ASSIGN TO 'C:\Text-Adventure\cobol.data\items.dat'
@@ -37,15 +36,10 @@
       ******************************************************************
       *    LAYOUT FOR THE INPUT-ROOMS FILE
       ******************************************************************
-      *    TODO: CHANGE LAYOUT TO MATCH NEW ROOMS FILE
        01 ROOMS-DATA.
            03 I-ROOMNUM        PIC 99.
            03 I-ROOMDESC       PIC X(15).
-           03 I-ROOMNORTH      PIC 99.
-           03 I-ROOMEAST       PIC 99.
-           03 I-ROOMSOUTH      PIC 99.
-           03 I-ROOMWEST       PIC 99.
-           03 FILLER           PIC X(55)   VALUE SPACES.
+           03 FILLER           PIC X(63)   VALUE SPACES.
       ******************************************************************
       *    LAYOUT FOR THE INPUT-ITEMS FILE
       ******************************************************************
@@ -72,19 +66,24 @@
       ******************************************************************
       *    SETUP ROOMS TABLE
       ******************************************************************
-      *    TODO: CHANGE TABLE TO NOT CONTAIN DIRECTION DATA
        01 ROOMS-TABLE.
          03 ROOMS-FIELDS OCCURS 10 TIMES.
            05 T-ROOMNUM        PIC 99.
            05 T-ROOMDESC       PIC X(14).
-           05 T-ROOMNORTH      PIC 99.
-           05 T-ROOMEAST       PIC 99.
-           05 T-ROOMSOUTH      PIC 99.
-           05 T-ROOMWEST       PIC 99.
            05 T-ROOMITEM       PIC X(13) VALUE SPACES.
            05 T-ROOMITEMNUM    PIC 99.
            05 T-ROOMMON        PIC 99    VALUE 00.
       *    TODO: CREATE MAP TABLE
+      ******************************************************************
+      *    MAP TABLE
+      ******************************************************************
+       01 MAP-TABLE.
+         03 MAP-FIELDS OCCURS 10 TIMES.
+           05 T-MAP-NUM       PIC 99     VALUE ZEROS.
+           05 T-MAP-NORTH     PIC 99     VALUE ZEROS.
+           05 T-MAP-EAST      PIC 99     VALUE ZEROS.
+           05 T-MAP-SOUTH     PIC 99     VALUE ZEROS.
+           05 T-MAP-WEST      PIC 99     VALUE ZEROS.
       ******************************************************************
       *    SETUP ITEMS TABLE
       ******************************************************************
@@ -131,7 +130,7 @@
            03 COMMAND-INPUT    PIC X(22)   VALUE SPACES.
            03 COMMAND          PIC X(10)   VALUE SPACES.
            03 COMMAND-PARM     PIC X(12)   VALUE SPACES.
-           03 CURRENT-ROOM     PIC 99      VALUE 01.
+           03 CURRENT-ROOM     PIC 99      VALUE 10.
            03 NEXT-ROOM        PIC 99.
            03 WILL-TO-LIVE     PIC 999     VALUE 100.
            03 BRIEFCASE-WEIGHT PIC 99      VALUE 00.
@@ -161,7 +160,11 @@
                   05  CURRENTHOUR     PIC 99.
                   05  CURRENTMINUTE   PIC 99.
                   05  CURRENTSSSS     PIC 9(4).
-      *    TODO: CREATE VARIABLES NEEDED FOR MAP RANDOMIZATION
+           03 MAP-COUNT        PIC 99      VALUE 01.
+           03 COUNTER          PIC 99.
+           03 CONNECT-COUNT    PIC 99      VALUE 01.
+           03 MOD-NUM          PIC 99.
+           03 ROOM-NUM         PIC 99      VALUE 10.
        PROCEDURE DIVISION.
       ******************************************************************
       *    MAIN PROGRAM LOGIC
@@ -179,7 +182,8 @@
                PERFORM 3000-LOAD-MONSTERS
            UNTIL EOF-MONSTERS = 1.
            CLOSE INPUT-MONSTERS.
-      *    TODO: ADD MAP GENERATION AND ROOM CONNECTION PROCEDURES
+           PERFORM 1100-RANDOMIZE-MAP
+           PERFORM 1200-CONNECT-ROOMS
            PERFORM 2500-PLACE-ITEMS
            PERFORM 3500-PLACE-MONSTERS
            DISPLAY "YOU FORGOT YOUR KEYS IN THE OFFICE. YOU MUST"
@@ -187,7 +191,7 @@
                DISPLAY "YOU RUN OUT OF YOUR WILL TO LIVE. ELSE"
                DISPLAY "ELSE YOU'LL BE WORKING OVERTIME THIS WEEKEND."
                DISPLAY "ENTER 'HELP' FOR COMMAND LIST"
-               DISPLAY "YOU ARE IN ", T-ROOMDESC(CURRENT-ROOM).
+               DISPLAY "YOU ARE IN ", T-ROOMDESC(ROOM-NUM).
            PERFORM UNTIL (COMMAND = 'QUIT' OR WILL-TO-LIVE <= 0)
                DISPLAY "-----------------------------------------------"
                DISPLAY "WILL TO LIVE:", WILL-TO-LIVE
@@ -213,14 +217,65 @@
                    ADD 1 TO ROOM-COUNT
                    MOVE I-ROOMNUM   TO T-ROOMNUM(ROOM-COUNT)
                    MOVE I-ROOMDESC  TO T-ROOMDESC(ROOM-COUNT)
-                   MOVE I-ROOMNORTH TO T-ROOMNORTH(ROOM-COUNT)
-                   MOVE I-ROOMEAST  TO T-ROOMEAST(ROOM-COUNT)
-                   MOVE I-ROOMSOUTH TO T-ROOMSOUTH(ROOM-COUNT)
-                   MOVE I-ROOMWEST  TO T-ROOMWEST(ROOM-COUNT)
            END-READ.
-      *    TODO: CHANGE LOAD ROOMS TO LOAD DATA FROM THE NEW ROOMS FILE
-      *    TODO: ADD RANDOMIZE MAP PROCEDURE CODE
-      *    TODO: ADD CONNECT ROOMS PROCEDURE CODE
+      ******************************************************************
+      *    1100-RANDOMIZE-MAP
+      ******************************************************************
+       1100-RANDOMIZE-MAP.
+           ACCEPT  SEED-TIME FROM TIME.
+           MOVE SEED-TIME TO RANDOM-SEED.
+           COMPUTE RANDOM-NUM = FUNCTION RANDOM (RANDOM-SEED).
+           MOVE T-ROOMNUM(10) TO T-MAP-NUM(10)
+           PERFORM UNTIL MAP-COUNT > 9
+               COMPUTE RANDOM-NUM = FUNCTION RANDOM * 9 + 1
+               IF (T-MAP-NUM(RANDOM-NUM) = 00) THEN
+                   MOVE T-ROOMNUM(MAP-COUNT) TO T-MAP-NUM(RANDOM-NUM)
+                   ADD 1 TO MAP-COUNT
+               ELSE
+                   CONTINUE
+               END-IF
+           END-PERFORM.
+      ******************************************************************
+      *    1200-CONNECT-ROOMS
+      ******************************************************************
+       1200-CONNECT-ROOMS.
+           PERFORM UNTIL CONNECT-COUNT > 9
+      *    USING MOD FUNCTION TO CHECK IF ROOM HAS EAST OR WEST WALL
+               COMPUTE MOD-NUM = FUNCTION MOD (CONNECT-COUNT, 3)
+               IF ((CONNECT-COUNT - 3) > 00 AND
+                   (CONNECT-COUNT - 3) <= 09) THEN
+                    SUBTRACT 3 FROM CONNECT-COUNT GIVING
+                    T-MAP-NORTH(CONNECT-COUNT)
+               ELSE
+                   MOVE 00 TO T-MAP-NORTH(CONNECT-COUNT)
+               END-IF
+               IF ((CONNECT-COUNT + 1) > 00 AND
+                   (CONNECT-COUNT + 1) <= 09 AND
+                   MOD-NUM NOT = 00) THEN
+                   ADD 1 TO CONNECT-COUNT GIVING
+                   T-MAP-EAST(CONNECT-COUNT)
+               ELSE
+                   MOVE 00 TO T-MAP-EAST(CONNECT-COUNT)
+               END-IF
+               IF ((CONNECT-COUNT + 3) > 00 AND
+                   (CONNECT-COUNT + 3) <= 9) THEN
+                   ADD 3 TO CONNECT-COUNT GIVING
+                   T-MAP-SOUTH(CONNECT-COUNT)
+               ELSE
+                   MOVE 00 TO T-MAP-SOUTH(CONNECT-COUNT)
+               END-IF
+               IF ((CONNECT-COUNT - 1) > 00 AND
+                   (CONNECT-COUNT - 1) <= 9 AND
+                   MOD-NUM NOT = 01) THEN
+                   SUBTRACT 1 FROM CONNECT-COUNT GIVING
+                   T-MAP-WEST(CONNECT-COUNT)
+               ELSE
+                   MOVE 00 TO T-MAP-WEST(CONNECT-COUNT)
+               END-IF
+               ADD 1 TO CONNECT-COUNT
+           END-PERFORM
+      *    SET STARTING ROOM NORTH EXIT TO ENTER ON MAP 09
+           MOVE 09 TO T-MAP-NORTH(10).
       ******************************************************************
       *    READS THE ITEMS FILE INTO ITEMS TABLE
       ******************************************************************
@@ -309,16 +364,16 @@
       ******************************************************************
        4100-PROCESS-GO.
            IF (COMMAND-PARM = "NORTH") THEN
-               MOVE T-ROOMNORTH(CURRENT-ROOM) TO NEXT-ROOM
+               MOVE T-MAP-NORTH(CURRENT-ROOM) TO NEXT-ROOM
            ELSE
                IF (COMMAND-PARM = "EAST") THEN
-                   MOVE T-ROOMEAST(CURRENT-ROOM) TO NEXT-ROOM
+                   MOVE T-MAP-EAST(CURRENT-ROOM) TO NEXT-ROOM
                ELSE
                    IF (COMMAND-PARM = "SOUTH") THEN
-                       MOVE T-ROOMSOUTH(CURRENT-ROOM) TO NEXT-ROOM
+                       MOVE T-MAP-SOUTH(CURRENT-ROOM) TO NEXT-ROOM
                    ELSE
                        IF (COMMAND-PARM = "WEST") THEN
-                           MOVE T-ROOMWEST(CURRENT-ROOM) TO NEXT-ROOM
+                           MOVE T-MAP-WEST(CURRENT-ROOM) TO NEXT-ROOM
                        END-IF
                    END-IF
                END-IF
@@ -334,8 +389,9 @@
        4150-ENTER-NEXT-ROOM.
            COMPUTE WILL-TO-LIVE = WILL-TO-LIVE - (BRIEFCASE-WEIGHT * .2)
            MOVE NEXT-ROOM TO CURRENT-ROOM
-           DISPLAY "YOU ARE IN ", T-ROOMDESC(CURRENT-ROOM)
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
+           MOVE T-MAP-NUM(CURRENT-ROOM) TO ROOM-NUM
+           DISPLAY "YOU ARE IN ", T-ROOMDESC(ROOM-NUM)
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
                PERFORM 4900-MONSTER-ATTACK
            END-IF.
       ******************************************************************
@@ -348,7 +404,7 @@
            ELSE
                DISPLAY "THAT ITEM IS NOT HERE"
            END-IF
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
                PERFORM 4900-MONSTER-ATTACK
            END-IF.
       ******************************************************************
@@ -364,8 +420,8 @@
                    ADD 1 TO BRIEFCASE-SLOT
                END-PERFORM
                MOVE ITEM-TO-PICKUP TO B-ITEMNUM(BRIEFCASE-SLOT)
-               MOVE SPACES TO T-ROOMITEM(CURRENT-ROOM)
-               MOVE 00 TO T-ROOMITEMNUM(CURRENT-ROOM)
+               MOVE SPACES TO T-ROOMITEM(ROOM-NUM)
+               MOVE 00 TO T-ROOMITEMNUM(ROOM-NUM)
                ADD T-ITEMWEIGHT(ITEM-TO-PICKUP) TO BRIEFCASE-WEIGHT
                DISPLAY "YOU PICK UP ", T-ITEMDESC(ITEM-TO-PICKUP)
            END-IF.
@@ -385,17 +441,17 @@
            IF (DROPPED = 0) THEN
                DISPLAY "YOU DON'T HAVE THAT ITEM"
            END-IF
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
                PERFORM 4900-MONSTER-ATTACK
            END-IF.
       ******************************************************************
       *    4350-DROP-ITEM
       ******************************************************************
        4350-DROP-ITEM.
-           IF (T-ROOMITEMNUM(CURRENT-ROOM) = 00) THEN
+           IF (T-ROOMITEMNUM(ROOM-NUM) = 00) THEN
                MOVE 00 TO B-ITEMNUM(B-COUNT)
-               MOVE T-ITEMDESC(B-ITEM) TO T-ROOMITEM(CURRENT-ROOM)
-               MOVE B-ITEM TO T-ROOMITEMNUM(CURRENT-ROOM)
+               MOVE T-ITEMDESC(B-ITEM) TO T-ROOMITEM(ROOM-NUM)
+               MOVE B-ITEM TO T-ROOMITEMNUM(ROOM-NUM)
                SUBTRACT T-ITEMWEIGHT(B-ITEM) FROM BRIEFCASE-WEIGHT
                IF (BRIEFCASE-WEIGHT < 0) THEN
                    MOVE 00 TO BRIEFCASE-WEIGHT
@@ -425,7 +481,7 @@
            IF (USED = 0)
                DISPLAY "YOU DON'T HAVE THAT ITEM"
            END-IF
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
                PERFORM 4900-MONSTER-ATTACK
            END-IF.
       ******************************************************************
@@ -444,7 +500,7 @@
                IF (T-ITEMDAMAGE(B-ITEM) NOT = 00) THEN
                    PERFORM 4455-ATTACK-ITEM
                ELSE
-                   IF (T-ITEMWIN(B-ITEM) NOT = 00 AND CURRENT-ROOM = 01)
+                   IF (T-ITEMWIN(B-ITEM) NOT = 00 AND CURRENT-ROOM = 10)
                        THEN
                        DISPLAY "CONGRATULATIONS YOU MADE IT!"
                        MOVE 000 TO WILL-TO-LIVE
@@ -462,16 +518,16 @@
       *    4500-PROCESS-LOOK
       ******************************************************************
        4500-PROCESS-LOOK.
-           DISPLAY "YOU ARE IN ", T-ROOMDESC(CURRENT-ROOM)
-           IF (T-ROOMITEMNUM(CURRENT-ROOM) NOT = 00) THEN
-               MOVE T-ROOMITEMNUM(CURRENT-ROOM) TO CURRENT-ITEM
+           DISPLAY "YOU ARE IN ", T-ROOMDESC(ROOM-NUM)
+           IF (T-ROOMITEMNUM(ROOM-NUM) NOT = 00) THEN
+               MOVE T-ROOMITEMNUM(ROOM-NUM) TO CURRENT-ITEM
                DISPLAY "THERE IS A(N) ", T-ITEMDESC(CURRENT-ITEM)
            END-IF
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
-               MOVE T-ROOMMON(CURRENT-ROOM) TO CURRENT-MON
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
+               MOVE T-ROOMMON(ROOM-NUM) TO CURRENT-MON
                DISPLAY "YOU SEE ", T-MONDESC(CURRENT-MON)
            END-IF
-           IF (T-ROOMMON(CURRENT-ROOM) NOT = 00) THEN
+           IF (T-ROOMMON(ROOM-NUM) NOT = 00) THEN
                PERFORM 4900-MONSTER-ATTACK
            END-IF.
       ******************************************************************
@@ -491,7 +547,7 @@
       *    4700-PROCESS-ATTACK
       ******************************************************************
        4700-PROCESS-ATTACK.
-           MOVE T-ROOMMON(CURRENT-ROOM) TO CURRENT-MON
+           MOVE T-ROOMMON(ROOM-NUM) TO CURRENT-MON
            IF (CURRENT-MON NOT = 00)
                DISPLAY "YOU SLAP ", T-MONDESC(CURRENT-MON)
                PERFORM 4750-PLAYER-ATTACK
@@ -507,7 +563,7 @@
            MOVE T-MONHP(CURRENT-MON) TO MON-HP
            SUBTRACT PLAYER-ATTACK FROM MON-HP
            IF (MON-HP <= 0) THEN
-               MOVE 00 TO T-ROOMMON(CURRENT-ROOM)
+               MOVE 00 TO T-ROOMMON(ROOM-NUM)
                MOVE SPACES TO DISPLAY-OUTPUT
                STRING T-MONDESC(CURRENT-MON) DELIMITED BY ";"
                " RUNS AWAY CRYING" DELIMITED BY SIZE INTO DISPLAY-OUTPUT
@@ -533,7 +589,8 @@
       *    4900-MONSTER-ATTACK
       ******************************************************************
        4900-MONSTER-ATTACK.
-           MOVE T-ROOMMON(CURRENT-ROOM) TO CURRENT-MON
+           MOVE T-MAP-NUM(CURRENT-ROOM) TO ROOM-NUM
+           MOVE T-ROOMMON(ROOM-NUM) TO CURRENT-MON
            MOVE T-MONATTACK(CURRENT-MON) TO CURRENT-ATTACK
            COMPUTE WILL-TO-LIVE = WILL-TO-LIVE - CURRENT-ATTACK
            MOVE SPACES TO DISPLAY-OUTPUT
