@@ -9,6 +9,7 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
+      *    TODO: CHANGE FILE TO THE NEW ROOMS FILE
            SELECT INPUT-ROOMS
            ASSIGN TO 'C:\Text-Adventure\cobol.data\rooms.dat'
            ORGANISATION IS LINE SEQUENTIAL.
@@ -36,6 +37,7 @@
       ******************************************************************
       *    LAYOUT FOR THE INPUT-ROOMS FILE
       ******************************************************************
+      *    TODO: CHANGE LAYOUT TO MATCH NEW ROOMS FILE
        01 ROOMS-DATA.
            03 I-ROOMNUM        PIC 99.
            03 I-ROOMDESC       PIC X(15).
@@ -70,6 +72,7 @@
       ******************************************************************
       *    SETUP ROOMS TABLE
       ******************************************************************
+      *    TODO: CHANGE TABLE TO NOT CONTAIN DIRECTION DATA
        01 ROOMS-TABLE.
          03 ROOMS-FIELDS OCCURS 10 TIMES.
            05 T-ROOMNUM        PIC 99.
@@ -81,6 +84,7 @@
            05 T-ROOMITEM       PIC X(13) VALUE SPACES.
            05 T-ROOMITEMNUM    PIC 99.
            05 T-ROOMMON        PIC 99    VALUE 00.
+      *    TODO: CREATE MAP TABLE
       ******************************************************************
       *    SETUP ITEMS TABLE
       ******************************************************************
@@ -157,6 +161,7 @@
                   05  CURRENTHOUR     PIC 99.
                   05  CURRENTMINUTE   PIC 99.
                   05  CURRENTSSSS     PIC 9(4).
+      *    TODO: CREATE VARIABLES NEEDED FOR MAP RANDOMIZATION
        PROCEDURE DIVISION.
       ******************************************************************
       *    MAIN PROGRAM LOGIC
@@ -174,6 +179,7 @@
                PERFORM 3000-LOAD-MONSTERS
            UNTIL EOF-MONSTERS = 1.
            CLOSE INPUT-MONSTERS.
+      *    TODO: ADD MAP GENERATION AND ROOM CONNECTION PROCEDURES
            PERFORM 2500-PLACE-ITEMS
            PERFORM 3500-PLACE-MONSTERS
            DISPLAY "YOU FORGOT YOUR KEYS IN THE OFFICE. YOU MUST"
@@ -212,6 +218,9 @@
                    MOVE I-ROOMSOUTH TO T-ROOMSOUTH(ROOM-COUNT)
                    MOVE I-ROOMWEST  TO T-ROOMWEST(ROOM-COUNT)
            END-READ.
+      *    TODO: CHANGE LOAD ROOMS TO LOAD DATA FROM THE NEW ROOMS FILE
+      *    TODO: ADD RANDOMIZE MAP PROCEDURE CODE
+      *    TODO: ADD CONNECT ROOMS PROCEDURE CODE
       ******************************************************************
       *    READS THE ITEMS FILE INTO ITEMS TABLE
       ******************************************************************
